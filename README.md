@@ -87,5 +87,13 @@ npm run dev
 
 ---
 
+## 📈 Project Status
+
+- **Status**: Active Development
+- **Version**: 1.0.0
+- **Updates**: Continuous integration and UI enhancements are ongoing.
+
+---
+
 **Nice Vision** | *Capturing timeless stories through the lens.*
 Owner: Kim Gérard | Burundi
