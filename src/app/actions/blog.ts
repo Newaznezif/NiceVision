@@ -2,25 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-
-// Helper to save file locally for development/production
-async function saveFileLocally(file: File): Promise<string> {
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
-
-  const uploadDir = join(process.cwd(), "public", "uploads");
-  await mkdir(uploadDir, { recursive: true });
-
-  const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '');
-  const filename = `${Date.now()}-${safeName}`;
-  const filepath = join(uploadDir, filename);
-
-  await writeFile(filepath, buffer);
-
-  return `/uploads/${filename}`;
-}
+import { uploadFile } from "@/lib/storage";
 
 export async function getBlogPosts() {
   try {
@@ -57,7 +39,7 @@ export async function createBlogPost(formData: FormData) {
     let coverImage = "https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?q=80&w=2000&auto=format&fit=crop";
 
     if (file && file.size > 0 && file.name !== "undefined") {
-      coverImage = await saveFileLocally(file);
+      coverImage = await uploadFile(file);
     }
 
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Date.now();
@@ -106,7 +88,7 @@ export async function updateBlogPost(id: string, formData: FormData) {
     };
 
     if (file && file.size > 0 && file.name !== "undefined") {
-      data.coverImage = await saveFileLocally(file);
+      data.coverImage = await uploadFile(file);
     }
 
     await prisma.blogPost.update({
