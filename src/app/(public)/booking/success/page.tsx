@@ -3,31 +3,39 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { prisma } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
 import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
 interface SuccessPageProps {
   searchParams: Promise<{
-    session_id?: string;
+    reference?: string;
     booking_id?: string;
   }>;
 }
 
 export default async function BookingSuccessPage({ searchParams }: SuccessPageProps) {
   const params = await searchParams;
-  const sessionId = params.session_id;
+  const reference = params.reference;
   const bookingId = params.booking_id;
 
   let bookingDetails = null;
 
-  if (sessionId && bookingId) {
+  if (reference && bookingId) {
     try {
-      // 1. Retrieve the session from Stripe to verify payment status
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const paystackSecret = process.env.PAYSTACK_SECRET_KEY || "sk_test_placeholder";
 
-      if (session.payment_status === "paid") {
+      // 1. Verify transaction with Paystack API
+      const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${paystackSecret}`,
+        },
+      });
+
+      const resJson = await response.json();
+
+      if (resJson.status && resJson.data.status === "success") {
         // 2. Fetch booking and package details
         const booking = await prisma.booking.findUnique({
           where: { id: bookingId },
@@ -35,11 +43,11 @@ export default async function BookingSuccessPage({ searchParams }: SuccessPagePr
         });
 
         if (booking) {
-          const paidAmount = (session.amount_total || 0) / 100;
+          const paidAmount = (resJson.data.amount || 0) / 100;
 
           // 3. Update the booking and create the payment record securely in a transaction
           const existingPayment = await prisma.payment.findUnique({
-            where: { stripeId: sessionId },
+            where: { stripeId: reference }, // Map Stripe ID column to hold Paystack reference
           });
 
           if (!existingPayment) {
@@ -54,9 +62,9 @@ export default async function BookingSuccessPage({ searchParams }: SuccessPagePr
               prisma.payment.create({
                 data: {
                   bookingId: bookingId,
-                  stripeId: sessionId,
+                  stripeId: reference,
                   amount: paidAmount,
-                  currency: session.currency || "USD",
+                  currency: resJson.data.currency || "USD",
                   status: "SUCCESS",
                 },
               }),

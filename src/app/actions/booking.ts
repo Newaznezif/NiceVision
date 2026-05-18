@@ -1,7 +1,6 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { stripe } from "@/lib/stripe";
 
 export async function createBookingSession(data: {
   packageId: string;
@@ -68,42 +67,36 @@ export async function createBookingSession(data: {
       },
     });
 
-    // 4. Create Stripe Checkout Session for the deposit amount
+    // 4. Initialize Paystack Transaction
+    const paystackSecret = process.env.PAYSTACK_SECRET_KEY || "sk_test_placeholder";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nice-vision.vercel.app";
     const depositAmount = pkg.depositAmount || pkg.price * 0.25;
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: `Booking Deposit: ${pkg.name}`,
-              description: `Photography session deposit for ${data.name} on ${new Date(
-                data.dateStr
-              ).toLocaleDateString()} at ${startTime}.`,
-              images: [
-                "https://images.unsplash.com/photo-1516205651411-aef33a44f7c2?q=80&w=600&auto=format&fit=crop",
-              ],
-            },
-            unit_amount: Math.round(depositAmount * 100), // in cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${appUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}&booking_id=${booking.id}`,
-      cancel_url: `${appUrl}/booking`,
-      customer_email: data.email,
-      metadata: {
-        bookingId: booking.id,
-        userId: user.id,
-        packageId: pkg.id,
+    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecret}`,
+        "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        email: data.email,
+        amount: Math.round(depositAmount * 100), // in subunits (cents)
+        currency: "USD",
+        callback_url: `${appUrl}/booking/success?booking_id=${booking.id}`,
+        metadata: {
+          bookingId: booking.id,
+          userId: user.id,
+        },
+      }),
     });
 
-    return { url: session.url };
+    const resJson = await response.json();
+
+    if (!resJson.status) {
+      throw new Error(resJson.message || "Failed to initialize Paystack transaction.");
+    }
+
+    return { url: resJson.data.authorization_url };
   } catch (error) {
     console.error("Booking server action error:", error);
     const err = error as Error;
