@@ -88,7 +88,7 @@ export async function createBookingSession(data: {
       },
       body: JSON.stringify({
         amount: depositAmount.toString(),
-        currency: "USD", // You can switch this to "ETB" if using Ethiopian Birr locally
+        currency: "ETB", // Chapa Test Mode requires ETB (Ethiopian Birr) to process successfully
         email: data.email,
         first_name,
         last_name,
