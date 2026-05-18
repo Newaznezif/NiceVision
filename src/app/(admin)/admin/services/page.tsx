@@ -25,12 +25,13 @@ import {
   deletePackage 
 } from "@/app/actions/services";
 import { useEffect } from "react";
+import { Package } from "@prisma/client";
 
 export default function AdminServices() {
-  const [services, setServices] = useState<any[]>([]);
+  const [services, setServices] = useState<Package[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingService, setEditingService] = useState<any>(null);
+  const [editingService, setEditingService] = useState<Package | null>(null);
   const [formData, setFormData] = useState({ name: "", price: 0, category: "Wedding", duration: "" });
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export default function AdminServices() {
         setServices(services.filter(s => s.id !== id));
         toast.error("Service package deleted.");
       } catch (error) {
+        console.error(error);
         toast.error("Failed to delete service.");
       }
     }
@@ -61,7 +63,7 @@ export default function AdminServices() {
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (service: any) => {
+  const handleOpenEdit = (service: Package) => {
     setEditingService(service);
     setFormData({ 
       name: service.name, 
@@ -85,6 +87,7 @@ export default function AdminServices() {
       setIsModalOpen(false);
       loadPackages();
     } catch (error) {
+      console.error(error);
       toast.error("Failed to save service.");
     }
   };
@@ -121,8 +124,8 @@ export default function AdminServices() {
               <div className="p-3 bg-gold/10 text-gold rounded-lg">
                 <Tag className="w-6 h-6" />
               </div>
-              <span className={`px-2 py-1 text-[8px] font-bold uppercase tracking-widest ${pkg.status === "Active" ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"}`}>
-                {pkg.status}
+              <span className={`px-2 py-1 text-[8px] font-bold uppercase tracking-widest ${pkg.isActive ? "bg-green-500/20 text-green-400" : "bg-white/5 text-white/30"}`}>
+                {pkg.isActive ? "Active" : "Inactive"}
               </span>
             </div>
             

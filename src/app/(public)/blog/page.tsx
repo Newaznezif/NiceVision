@@ -7,9 +7,10 @@ import Link from "next/link";
 import { Calendar, User, ArrowRight, Tag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPublishedBlogPosts } from "@/app/actions/blog";
+import { BlogPost } from "@prisma/client";
 
 export default function BlogPage() {
-  const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

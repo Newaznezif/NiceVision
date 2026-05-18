@@ -47,7 +47,7 @@ export default function AboutPage() {
                 Born and raised in the heart of Burundi, my journey with photography began as a fascination with the play of light on the hills of Bujumbura. Over the past decade, I have dedicated my life to capturing the raw beauty of human connection and the breathtaking landscapes of my homeland.
               </p>
               <p>
-                My style is characterized by cinematic compositions, emotional depth, and a commitment to authenticity. Whether it's the nervous joy of a wedding morning or the quiet confidence of a corporate leader, I strive to find the extraordinary in the ordinary.
+                My style is characterized by cinematic compositions, emotional depth, and a commitment to authenticity. Whether it&apos;s the nervous joy of a wedding morning or the quiet confidence of a corporate leader, I strive to find the extraordinary in the ordinary.
               </p>
             </div>
           </div>

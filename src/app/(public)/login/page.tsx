@@ -33,8 +33,9 @@ export default function LoginPage() {
         if (error) throw error;
         toast.success("Account created! Please check your email.");
       }
-    } catch (error: any) {
-      toast.error(error.message || "Authentication failed");
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "Authentication failed");
     } finally {
       setLoading(false);
     }

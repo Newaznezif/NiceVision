@@ -61,9 +61,13 @@ export async function updatePortfolioItem(id: string, formData: FormData) {
   const title = formData.get("title") as string;
   const category = formData.get("category") as string;
   const file = formData.get("file") as File | null;
-  let url = formData.get("url") as string;
+  const url = formData.get("url") as string;
 
-  const data: any = { title, category };
+  const data: {
+    title: string;
+    category: string;
+    url?: string;
+  } = { title, category };
 
   // If a new file was uploaded, overwrite the URL
   if (file && file.size > 0 && file.name !== "undefined") {

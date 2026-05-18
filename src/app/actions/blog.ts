@@ -79,8 +79,9 @@ export async function createBlogPost(formData: FormData) {
     revalidatePath("/admin/blog");
     revalidatePath("/blog");
     return { success: true };
-  } catch (error: any) {
-    throw new Error(error.message);
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(err.message);
   }
 }
 
@@ -91,7 +92,13 @@ export async function updateBlogPost(id: string, formData: FormData) {
     const isPublished = formData.get("isPublished") === "true";
     const file = formData.get("file") as File | null;
     
-    const data: any = {
+    const data: {
+      title: string;
+      category: string;
+      isPublished: boolean;
+      publishedAt: Date | null;
+      coverImage?: string;
+    } = {
       title,
       category,
       isPublished,
@@ -110,8 +117,9 @@ export async function updateBlogPost(id: string, formData: FormData) {
     revalidatePath("/admin/blog");
     revalidatePath("/blog");
     return { success: true };
-  } catch (error: any) {
-    throw new Error(error.message);
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(err.message);
   }
 }
 
@@ -121,7 +129,8 @@ export async function deleteBlogPost(id: string) {
     revalidatePath("/admin/blog");
     revalidatePath("/blog");
     return { success: true };
-  } catch (error: any) {
-    throw new Error(error.message);
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(err.message);
   }
 }
