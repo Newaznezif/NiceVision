@@ -1,12 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBookingStore } from "@/store/use-booking-store";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { cn, formatPrice } from "@/lib/utils";
 import { Check, Clock, ArrowLeft, ArrowRight } from "lucide-react";
+import { createBookingSession } from "@/app/actions/booking";
+import { toast } from "sonner";
 
 type Package = {
   id: string;
@@ -24,10 +26,51 @@ interface BookingFormProps {
 const timeSlots = ["09:00 AM", "10:00 AM", "11:00 AM", "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"];
 
 export function BookingForm({ packages }: BookingFormProps) {
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const {
     step, packageId, date, timeSlot, details,
     setStep, setPackage, setDate, setTimeSlot, setDetails,
   } = useBookingStore();
+
+  const handleCheckout = async () => {
+    if (!packageId || !date || !timeSlot) {
+      toast.error("Please complete all booking steps first.");
+      return;
+    }
+
+    if (!details.name || !details.email || !details.phone) {
+      toast.error("Please fill in your Name, Email, and Phone Number.");
+      return;
+    }
+
+    setIsRedirecting(true);
+    toast.info("Preparing your payment session...");
+
+    try {
+      const res = await createBookingSession({
+        packageId,
+        dateStr: date.toISOString(),
+        timeSlot,
+        name: details.name,
+        email: details.email,
+        phone: details.phone,
+        location: details.location,
+        notes: details.notes,
+      });
+
+      if (res?.url) {
+        toast.success("Redirecting to Stripe Checkout...");
+        window.location.href = res.url;
+      } else {
+        throw new Error("No checkout URL returned from Stripe.");
+      }
+    } catch (error) {
+      console.error(error);
+      const err = error as Error;
+      toast.error(err.message || "Failed to initiate Stripe Checkout.");
+      setIsRedirecting(false);
+    }
+  };
 
   const currentPackage = packages.find((p) => p.id === packageId);
 
@@ -285,11 +328,11 @@ export function BookingForm({ packages }: BookingFormProps) {
             </div>
 
             <div className="flex justify-between pt-8 border-t border-white/10">
-              <Button variant="outline" onClick={() => setStep(2)}>
+              <Button variant="outline" disabled={isRedirecting} onClick={() => setStep(2)}>
                 <ArrowLeft className="mr-2 w-4 h-4" /> Back
               </Button>
-              <Button onClick={() => alert("Redirecting to Stripe...")}>
-                Confirm & Pay Deposit
+              <Button onClick={handleCheckout} disabled={isRedirecting}>
+                {isRedirecting ? "Processing..." : "Confirm & Pay Deposit"}
               </Button>
             </div>
           </motion.div>
