@@ -97,16 +97,20 @@ export async function createBookingSession(data: {
         callback_url: `${appUrl}/api/webhooks/chapa`, // optional webhook
         return_url: `${appUrl}/booking/success?booking_id=${booking.id}`,
         customization: {
-          title: "Nice Vision Booking Deposit",
+          title: "Nice Vision",
           description: `Deposit payment for ${pkg.name} session.`
         }
       }),
     });
 
     const resJson = await response.json();
+    console.log("Raw Chapa Response:", resJson);
 
     if (resJson.status !== "success") {
-      throw new Error(resJson.message || "Failed to initialize Chapa transaction.");
+      const errMsg = typeof resJson.message === 'object' 
+        ? JSON.stringify(resJson.message) 
+        : resJson.message;
+      throw new Error(errMsg || "Failed to initialize Chapa transaction.");
     }
 
     return { url: resJson.data.checkout_url };
