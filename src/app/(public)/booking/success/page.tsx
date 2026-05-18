@@ -9,33 +9,31 @@ export const dynamic = "force-dynamic";
 
 interface SuccessPageProps {
   searchParams: Promise<{
-    reference?: string;
     booking_id?: string;
   }>;
 }
 
 export default async function BookingSuccessPage({ searchParams }: SuccessPageProps) {
   const params = await searchParams;
-  const reference = params.reference;
   const bookingId = params.booking_id;
 
   let bookingDetails = null;
 
-  if (reference && bookingId) {
+  if (bookingId) {
     try {
-      const paystackSecret = process.env.PAYSTACK_SECRET_KEY || "sk_test_placeholder";
+      const chapaSecret = process.env.CHAPA_SECRET_KEY || "CHASECK_TEST-placeholder";
 
-      // 1. Verify transaction with Paystack API
-      const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+      // 1. Verify transaction status directly with Chapa API
+      const response = await fetch(`https://api.chapa.co/v1/transaction/verify/${bookingId}`, {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${paystackSecret}`,
+          Authorization: `Bearer ${chapaSecret}`,
         },
       });
 
       const resJson = await response.json();
 
-      if (resJson.status && resJson.data.status === "success") {
+      if (resJson.status === "success" && resJson.data.status === "success") {
         // 2. Fetch booking and package details
         const booking = await prisma.booking.findUnique({
           where: { id: bookingId },
@@ -43,11 +41,11 @@ export default async function BookingSuccessPage({ searchParams }: SuccessPagePr
         });
 
         if (booking) {
-          const paidAmount = (resJson.data.amount || 0) / 100;
+          const paidAmount = Number(resJson.data.amount) || booking.package.depositAmount || (booking.package.price * 0.25);
 
           // 3. Update the booking and create the payment record securely in a transaction
           const existingPayment = await prisma.payment.findUnique({
-            where: { stripeId: reference }, // Map Stripe ID column to hold Paystack reference
+            where: { stripeId: bookingId }, // Reusing stripeId column to hold Chapa reference
           });
 
           if (!existingPayment) {
@@ -62,7 +60,7 @@ export default async function BookingSuccessPage({ searchParams }: SuccessPagePr
               prisma.payment.create({
                 data: {
                   bookingId: bookingId,
-                  stripeId: reference,
+                  stripeId: bookingId,
                   amount: paidAmount,
                   currency: resJson.data.currency || "USD",
                   status: "SUCCESS",
@@ -77,6 +75,7 @@ export default async function BookingSuccessPage({ searchParams }: SuccessPagePr
             date: booking.date.toLocaleDateString(),
             timeSlot: booking.startTime,
             amountPaid: paidAmount,
+            currency: resJson.data.currency || "USD",
           };
 
           revalidatePath("/admin/bookings");
@@ -84,7 +83,7 @@ export default async function BookingSuccessPage({ searchParams }: SuccessPagePr
         }
       }
     } catch (error) {
-      console.error("Error confirming booking payment:", error);
+      console.error("Error confirming booking payment with Chapa:", error);
     }
   }
 
@@ -123,7 +122,9 @@ export default async function BookingSuccessPage({ searchParams }: SuccessPagePr
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] uppercase tracking-widest text-white/30">Deposit Paid</span>
-                <p className="font-bold text-gold">${bookingDetails.amountPaid.toFixed(2)}</p>
+                <p className="font-bold text-gold">
+                  {bookingDetails.currency} {bookingDetails.amountPaid.toFixed(2)}
+                </p>
               </div>
             </div>
           )}

@@ -67,39 +67,52 @@ export async function createBookingSession(data: {
       },
     });
 
-    // 4. Initialize Paystack Transaction
-    const paystackSecret = process.env.PAYSTACK_SECRET_KEY || "sk_test_placeholder";
+    // 4. Split name for Chapa first_name & last_name validation
+    const nameParts = data.name.trim().split(/\s+/);
+    const first_name = nameParts[0] || "Client";
+    const last_name = nameParts.slice(1).join(" ") || "Customer";
+
+    // Format phone number safely (strip non-digits for validation)
+    const phone_number = data.phone.replace(/\D/g, "") || "0900000000";
+
+    // 5. Initialize Chapa Transaction
+    const chapaSecret = process.env.CHAPA_SECRET_KEY || "CHASECK_TEST-placeholder";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nice-vision.vercel.app";
     const depositAmount = pkg.depositAmount || pkg.price * 0.25;
 
-    const response = await fetch("https://api.paystack.co/transaction/initialize", {
+    const response = await fetch("https://api.chapa.co/v1/transaction/initialize", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${paystackSecret}`,
+        Authorization: `Bearer ${chapaSecret}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        amount: depositAmount.toString(),
+        currency: "USD", // You can switch this to "ETB" if using Ethiopian Birr locally
         email: data.email,
-        amount: Math.round(depositAmount * 100), // in subunits (cents)
-        currency: "USD",
-        callback_url: `${appUrl}/booking/success?booking_id=${booking.id}`,
-        metadata: {
-          bookingId: booking.id,
-          userId: user.id,
-        },
+        first_name,
+        last_name,
+        phone_number,
+        tx_ref: booking.id, // Using CUID booking ID as our unique transaction reference
+        callback_url: `${appUrl}/api/webhooks/chapa`, // optional webhook
+        return_url: `${appUrl}/booking/success?booking_id=${booking.id}`,
+        customization: {
+          title: "Nice Vision Booking Deposit",
+          description: `Deposit payment for ${pkg.name} session.`
+        }
       }),
     });
 
     const resJson = await response.json();
 
-    if (!resJson.status) {
-      throw new Error(resJson.message || "Failed to initialize Paystack transaction.");
+    if (resJson.status !== "success") {
+      throw new Error(resJson.message || "Failed to initialize Chapa transaction.");
     }
 
-    return { url: resJson.data.authorization_url };
+    return { url: resJson.data.checkout_url };
   } catch (error) {
     console.error("Booking server action error:", error);
     const err = error as Error;
-    throw new Error(err.message || "Failed to initiate booking checkout.");
+    throw new Error(err.message || "Failed to initiate Chapa payment redirect.");
   }
 }
