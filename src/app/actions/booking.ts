@@ -120,3 +120,16 @@ export async function createBookingSession(data: {
     throw new Error(err.message || "Failed to initiate Chapa payment redirect.");
   }
 }
+
+export async function updateBookingStatus(id: string, status: "APPROVED" | "REJECTED" | "CANCELLED") {
+  try {
+    await prisma.booking.update({
+      where: { id },
+      data: { status },
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update booking status:", error);
+    throw new Error("Failed to update booking status.");
+  }
+}
